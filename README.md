@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Simple CRM (Next.js + Gmail + Google Sheets + Claude)
 
-## Getting Started
+This CRM reads contacts from a Google Sheet, shows them in a searchable/filterable table, and syncs Gmail conversation context back into the sheet on an hourly schedule.
 
-First, run the development server:
+## Features
+
+- Contact table UI backed by Google Sheets
+- Search across name/email/phone/website/company/summary/snippet
+- Column filters for stage and company
+- Hourly sync route for Vercel Cron (`/api/sync`)
+- Two Gmail inboxes supported for thread scanning
+- Claude summary + stage + follow-up suggestion
+
+## Sheet format
+
+Create a worksheet tab for your contacts (default name: `contacts`) with the columns below in row 1:
+
+`name | email | phone | website | company | stage | lastOutbound | lastInbound | daysSinceResponse | sentiment | summary | nextFollowUp | threadId | snippet | updatedAt`
+
+If you already had the old 13-column layout, insert two new columns **C and D** for `phone` and `website`, shift existing data right, and update row 1 headers to match the order above.
+
+If your tab is not named `contacts`, set `GOOGLE_SHEET_TAB` in `.env.local` to the exact tab name (for example `Sheet1`).
+
+## Environment variables
+
+Copy `.env.example` to `.env.local` and fill in values:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Required values:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_REDIRECT_URI` (default supports OAuth Playground)
+- `GOOGLE_SHEET_ID`
+- `GOOGLE_SHEET_TAB` (optional; defaults to `contacts`)
+- `GMAIL_ACCOUNT_1_EMAIL`
+- `GMAIL_ACCOUNT_1_REFRESH_TOKEN`
+- `GMAIL_ACCOUNT_2_EMAIL`
+- `GMAIL_ACCOUNT_2_REFRESH_TOKEN`
+- `ANTHROPIC_API_KEY`
+- `CRON_SECRET`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Running locally
 
-## Learn More
+```bash
+npm install
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Open `http://localhost:3000`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+To run a manual sync locally:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+curl -H "Authorization: Bearer <CRON_SECRET>" http://localhost:3000/api/sync
+```
 
-## Deploy on Vercel
+## Vercel deployment
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `vercel.json` includes an hourly cron: `0 * * * *`
+- Set the same `CRON_SECRET` in Vercel project environment variables
+- Cron requests call `/api/sync` and are authorized by bearer token
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Notes
+
+- This V1 stores snippets and AI summaries directly in the sheet.
+- If token management becomes painful, next step is adding OAuth connect flows and token storage.
