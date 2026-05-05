@@ -33,15 +33,19 @@ Required values:
 
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
-- `GOOGLE_REDIRECT_URI` (default supports OAuth Playground)
+- `APP_URL` (e.g. `http://localhost:3000` locally, your Vercel URL in prod)
+- `OAUTH_STATE_SECRET` (random string; used to sign OAuth state)
 - `GOOGLE_SHEET_ID`
 - `GOOGLE_SHEET_TAB` (optional; defaults to `contacts`)
+- `ANTHROPIC_API_KEY`
+- `CRON_SECRET`
+
+Optional legacy/manual values (only if you don't use `/settings` OAuth connect):
+
 - `GMAIL_ACCOUNT_1_EMAIL`
 - `GMAIL_ACCOUNT_1_REFRESH_TOKEN`
 - `GMAIL_ACCOUNT_2_EMAIL`
 - `GMAIL_ACCOUNT_2_REFRESH_TOKEN`
-- `ANTHROPIC_API_KEY`
-- `CRON_SECRET`
 
 ## Running locally
 
@@ -51,6 +55,17 @@ npm run dev
 ```
 
 Open `http://localhost:3000`.
+
+## Connect Gmail + Sheets (OAuth)
+
+1. Start the app: `npm run dev`
+2. Visit `http://localhost:3000/settings`
+3. Click **Connect** for slot 1 and slot 2
+
+After both are connected, the app will use those tokens for:
+
+- Gmail sync (both slots)
+- Sheets read/write (slot 1)
 
 To run a manual sync locally:
 

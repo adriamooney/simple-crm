@@ -85,6 +85,9 @@ export function CrmDashboard() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Simple CRM</h1>
         <div className="flex items-center gap-3">
+          <a className="text-sm text-blue-600 underline" href="/settings">
+            Settings
+          </a>
           {syncResult && <span className="text-sm text-zinc-500">{syncResult}</span>}
           <button
             onClick={() => void handleSync()}

@@ -1,6 +1,7 @@
 import { google } from "googleapis";
 
 import { getEnv } from "@/lib/env";
+import { getGoogleAccount } from "@/lib/token-store";
 import type { Contact } from "@/types/crm";
 
 const quoteSheetTab = (tab: string): string => `'${tab.replace(/'/g, "''")}'`;
@@ -12,7 +13,7 @@ const getOAuthClient = (refreshToken: string) => {
   const client = new google.auth.OAuth2(
     env.googleClientId,
     env.googleClientSecret,
-    env.googleRedirectUri,
+    env.googleRedirectUri || undefined,
   );
   client.setCredentials({ refresh_token: refreshToken });
   return client;
@@ -24,11 +25,19 @@ export const getGmailClient = (refreshToken: string) =>
     auth: getOAuthClient(refreshToken),
   });
 
-export const getSheetsClient = () =>
-  google.sheets({
+export const getSheetsClient = async () => {
+  const connected = await getGoogleAccount(1);
+  const legacy = getEnv().gmailAccounts[0];
+  const refreshToken = connected?.refreshToken || legacy?.refreshToken;
+  if (!refreshToken) {
+    throw new Error("No Google account connected for Sheets. Go to /settings and connect slot 1.");
+  }
+
+  return google.sheets({
     version: "v4",
-    auth: getOAuthClient(getEnv().gmailAccounts[0].refreshToken),
+    auth: getOAuthClient(refreshToken),
   });
+};
 
 const fromRow = (row: string[], rowNumber: number): Contact => ({
   rowNumber,
@@ -51,7 +60,7 @@ const fromRow = (row: string[], rowNumber: number): Contact => ({
 
 export const getContacts = async (): Promise<Contact[]> => {
   const env = getEnv();
-  const sheets = getSheetsClient();
+  const sheets = await getSheetsClient();
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: env.googleSheetId,
     range: sheetRange(env.googleSheetTab, "A2:O"),
@@ -63,7 +72,7 @@ export const getContacts = async (): Promise<Contact[]> => {
 
 export const updateContactRow = async (contact: Contact): Promise<void> => {
   const env = getEnv();
-  const sheets = getSheetsClient();
+  const sheets = await getSheetsClient();
   await sheets.spreadsheets.values.update({
     spreadsheetId: env.googleSheetId,
     range: sheetRange(env.googleSheetTab, `A${contact.rowNumber}:O${contact.rowNumber}`),

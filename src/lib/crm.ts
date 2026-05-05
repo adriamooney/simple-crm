@@ -3,6 +3,7 @@ import { differenceInCalendarDays } from "date-fns";
 import { summarizeConversation } from "@/lib/claude";
 import { getEnv } from "@/lib/env";
 import { getContacts, getGmailClient, updateContactRow } from "@/lib/google";
+import { getGoogleAccount } from "@/lib/token-store";
 import type { Contact } from "@/types/crm";
 
 type MessageHit = {
@@ -17,17 +18,22 @@ const nowIso = () => new Date().toISOString();
 const parseDate = (timestampMs: number): string => new Date(timestampMs).toISOString();
 
 const isFromOurMailbox = (fromHeader: string): boolean => {
-  const env = getEnv();
   const from = fromHeader.toLowerCase();
-  return env.gmailAccounts.some((account) => from.includes(account.email.toLowerCase()));
+  const legacy = getEnv().gmailAccounts.map((a) => a.email).filter(Boolean);
+  return legacy.some((email) => from.includes(email.toLowerCase()));
 };
 
 const fetchMessagesForContact = async (email: string): Promise<MessageHit[]> => {
-  const env = getEnv();
   const hits: MessageHit[] = [];
 
-  for (const account of env.gmailAccounts) {
-    const gmail = getGmailClient(account.refreshToken);
+  for (const slot of [1, 2] as const) {
+    const connected = await getGoogleAccount(slot);
+    const legacy = getEnv().gmailAccounts[slot - 1];
+    const refreshToken = connected?.refreshToken || legacy?.refreshToken;
+    const ourEmail = connected?.email || legacy?.email || "";
+    if (!refreshToken) continue;
+
+    const gmail = getGmailClient(refreshToken);
     const list = await gmail.users.messages.list({
       userId: "me",
       q: `to:${email} OR from:${email}`,
@@ -50,7 +56,7 @@ const fetchMessagesForContact = async (email: string): Promise<MessageHit[]> => 
         internalDate,
         snippet: detail.data.snippet ?? "",
         threadId: detail.data.threadId ?? "",
-        fromOneOfUs: isFromOurMailbox(fromHeader),
+        fromOneOfUs: ourEmail ? fromHeader.toLowerCase().includes(ourEmail.toLowerCase()) : isFromOurMailbox(fromHeader),
       });
     }
   }
