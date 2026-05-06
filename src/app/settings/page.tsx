@@ -1,13 +1,17 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 
 type StatusResponse = {
   accounts: { slot: 1 | 2; email: string; connectedAt: string }[];
 };
 
 async function getStatus(): Promise<StatusResponse> {
-  const res = await fetch(`${process.env.APP_URL ?? "http://localhost:3000"}/api/oauth/google/status`, {
-    cache: "no-store",
-  });
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  if (!host) return { accounts: [] };
+
+  const res = await fetch(`${proto}://${host}/api/oauth/google/status`, { cache: "no-store" });
   if (!res.ok) return { accounts: [] };
   return (await res.json()) as StatusResponse;
 }
