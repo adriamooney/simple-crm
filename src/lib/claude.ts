@@ -8,7 +8,8 @@ export const summarizeConversation = async (input: {
   latestSnippet: string;
   daysSinceInboundReply: number | null;
 }): Promise<{ stage: string; sentiment: string; summary: string; nextFollowUp: string }> => {
-  const anthropic = new Anthropic({ apiKey: getEnv().anthropicApiKey });
+  const env = getEnv();
+  const anthropic = new Anthropic({ apiKey: env.anthropicApiKey });
   const prompt = [
     "You are a sales CRM assistant.",
     "Return strict JSON with keys: stage, sentiment, summary, nextFollowUp.",
@@ -21,7 +22,7 @@ export const summarizeConversation = async (input: {
   ].join("\n");
 
   const response = await anthropic.messages.create({
-    model: "claude-3-5-sonnet-latest",
+    model: env.anthropicModel,
     max_tokens: 300,
     temperature: 0.2,
     messages: [{ role: "user", content: prompt }],

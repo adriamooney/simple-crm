@@ -38,6 +38,7 @@ Required values:
 - `GOOGLE_SHEET_ID`
 - `GOOGLE_SHEET_TAB` (optional; defaults to `contacts`)
 - `ANTHROPIC_API_KEY`
+- `ANTHROPIC_MODEL` (optional; defaults to `claude-sonnet-4-6`)
 - `CRON_SECRET`
 
 Optional legacy/manual values (only if you don't use `/settings` OAuth connect):

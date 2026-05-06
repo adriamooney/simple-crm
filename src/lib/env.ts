@@ -17,6 +17,7 @@ export const getEnv = () => ({
   googleSheetTab: optional("GOOGLE_SHEET_TAB") || "contacts",
   cronSecret: required("CRON_SECRET"),
   anthropicApiKey: required("ANTHROPIC_API_KEY"),
+  anthropicModel: optional("ANTHROPIC_MODEL") || "claude-sonnet-4-6",
   oauthStateSecret: optional("OAUTH_STATE_SECRET"),
   // Legacy/manual token support (optional). Kept for migration.
   gmailAccounts: [
