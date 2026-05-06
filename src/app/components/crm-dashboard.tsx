@@ -13,6 +13,7 @@ export function CrmDashboard() {
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [syncErrors, setSyncErrors] = useState<string[]>([]);
+  const [selected, setSelected] = useState<Contact | null>(null);
   const [query, setQuery] = useState("");
   const [stageFilter, setStageFilter] = useState("");
   const [companyFilter, setCompanyFilter] = useState("");
@@ -155,13 +156,16 @@ export function CrmDashboard() {
                 <th className="px-3 py-2">Company</th>
                 <th className="px-3 py-2">Stage</th>
                 <th className="px-3 py-2">Days Since Response</th>
-                <th className="px-3 py-2">Summary</th>
-                <th className="px-3 py-2">Snippet</th>
+                <th className="px-3 py-2">Details</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((contact) => (
-                <tr key={`${contact.email}-${contact.rowNumber}`} className="border-t border-zinc-200">
+                <tr
+                  key={`${contact.email}-${contact.rowNumber}`}
+                  className="border-t border-zinc-200 hover:bg-zinc-50 cursor-pointer"
+                  onClick={() => setSelected(contact)}
+                >
                   <td className="px-3 py-2">{contact.name}</td>
                   <td className="px-3 py-2">{contact.email}</td>
                   <td className="px-3 py-2">{contact.phone}</td>
@@ -186,12 +190,69 @@ export function CrmDashboard() {
                   <td className="px-3 py-2">{contact.company}</td>
                   <td className="px-3 py-2">{contact.stage}</td>
                   <td className="px-3 py-2">{contact.daysSinceResponse}</td>
-                  <td className="max-w-sm px-3 py-2">{contact.summary}</td>
-                  <td className="max-w-sm px-3 py-2 text-zinc-600">{contact.snippet}</td>
+                  <td className="px-3 py-2 text-blue-600 underline">View</td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {selected && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setSelected(null)}
+        >
+          <div
+            className="w-full max-w-2xl rounded-lg bg-white p-5 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold">{selected.name || selected.email}</h2>
+                <p className="text-sm text-zinc-600">{selected.email}</p>
+              </div>
+              <button
+                className="rounded-md border border-zinc-200 px-3 py-1 text-sm"
+                onClick={() => setSelected(null)}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="mt-4 grid gap-3 text-sm">
+              <div className="grid gap-1">
+                <div className="font-medium">Status</div>
+                <div className="text-zinc-700">
+                  Stage: {selected.stage || "—"} · Days since response: {selected.daysSinceResponse || "—"}
+                </div>
+              </div>
+
+              <div className="grid gap-1">
+                <div className="font-medium">Summary</div>
+                <div className="whitespace-pre-wrap text-zinc-800">{selected.summary || "—"}</div>
+              </div>
+
+              <div className="grid gap-1">
+                <div className="font-medium">Latest Gmail snippet</div>
+                <div className="whitespace-pre-wrap text-zinc-700">{selected.snippet || "—"}</div>
+              </div>
+
+              <div className="grid gap-1">
+                <div className="font-medium">Timing</div>
+                <div className="text-zinc-700">
+                  Last outbound: {selected.lastOutbound || "—"} · Last inbound: {selected.lastInbound || "—"}
+                </div>
+              </div>
+
+              <div className="grid gap-1">
+                <div className="font-medium">Next follow up</div>
+                <div className="text-zinc-700">{selected.nextFollowUp || "—"}</div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </main>

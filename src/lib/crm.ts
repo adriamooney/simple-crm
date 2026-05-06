@@ -70,11 +70,15 @@ const deriveTimes = (hits: MessageHit[]) => {
   const daysSinceInboundReply = latestInbound
     ? differenceInCalendarDays(new Date(), new Date(latestInbound.internalDate))
     : null;
+  const daysSinceOutbound = latestOutbound
+    ? differenceInCalendarDays(new Date(), new Date(latestOutbound.internalDate))
+    : null;
 
   return {
     latestOutbound,
     latestInbound,
     daysSinceInboundReply,
+    daysSinceOutbound,
   };
 };
 
@@ -89,7 +93,7 @@ const enrichContact = async (contact: Contact): Promise<Contact> => {
     };
   }
 
-  const { latestInbound, latestOutbound, daysSinceInboundReply } = deriveTimes(hits);
+  const { latestInbound, latestOutbound, daysSinceInboundReply, daysSinceOutbound } = deriveTimes(hits);
   const top = hits[0];
 
   const ai = await summarizeConversation({
@@ -107,7 +111,13 @@ const enrichContact = async (contact: Contact): Promise<Contact> => {
     nextFollowUp: ai.nextFollowUp,
     lastOutbound: latestOutbound ? parseDate(latestOutbound.internalDate) : "",
     lastInbound: latestInbound ? parseDate(latestInbound.internalDate) : "",
-    daysSinceResponse: daysSinceInboundReply === null ? "" : String(daysSinceInboundReply),
+    // If they've never replied inbound, show days since your most recent outbound email.
+    daysSinceResponse:
+      daysSinceInboundReply !== null
+        ? String(daysSinceInboundReply)
+        : daysSinceOutbound !== null
+          ? String(daysSinceOutbound)
+          : "",
     threadId: top.threadId,
     snippet: top.snippet,
     updatedAt: nowIso(),

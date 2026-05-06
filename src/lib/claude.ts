@@ -2,6 +2,28 @@ import Anthropic from "@anthropic-ai/sdk";
 
 import { getEnv } from "@/lib/env";
 
+const extractJsonObject = (text: string): string | null => {
+  // Try direct parse first
+  try {
+    JSON.parse(text);
+    return text;
+  } catch {
+    // continue
+  }
+
+  // Fallback: extract first top-level JSON object from the string
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) return null;
+  const candidate = text.slice(start, end + 1);
+  try {
+    JSON.parse(candidate);
+    return candidate;
+  } catch {
+    return null;
+  }
+};
+
 export const summarizeConversation = async (input: {
   contactName: string;
   contactEmail: string;
@@ -12,9 +34,12 @@ export const summarizeConversation = async (input: {
   const anthropic = new Anthropic({ apiKey: env.anthropicApiKey });
   const prompt = [
     "You are a sales CRM assistant.",
-    "Return strict JSON with keys: stage, sentiment, summary, nextFollowUp.",
+    "Return ONLY valid JSON (no markdown, no code fences, no commentary).",
+    "JSON keys: stage, sentiment, summary, nextFollowUp.",
     "stage examples: New, Initial Outreach, Follow-Up Needed, Interested, Closed Won, Closed Lost.",
     "sentiment examples: positive, neutral, negative.",
+    "summary should be 1-3 short, human-readable sentences (no JSON).",
+    "nextFollowUp should be a short human instruction (e.g. 'Follow up on Friday').",
     "",
     `Contact: ${input.contactName} <${input.contactEmail}>`,
     `Latest snippet: ${input.latestSnippet || "No snippet available"}`,
@@ -39,7 +64,10 @@ export const summarizeConversation = async (input: {
   }
 
   try {
-    const parsed = JSON.parse(textBlock.text) as {
+    const json = extractJsonObject(textBlock.text);
+    if (!json) throw new Error("Unable to parse JSON from Claude response");
+
+    const parsed = JSON.parse(json) as {
       stage?: string;
       sentiment?: string;
       summary?: string;
@@ -56,7 +84,7 @@ export const summarizeConversation = async (input: {
     return {
       stage: "Follow-Up Needed",
       sentiment: "neutral",
-      summary: textBlock.text.slice(0, 500),
+      summary: "Could not parse Claude response. Please sync again.",
       nextFollowUp: "Review manually",
     };
   }
