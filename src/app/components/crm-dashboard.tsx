@@ -13,6 +13,7 @@ export function CrmDashboard() {
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [syncErrors, setSyncErrors] = useState<string[]>([]);
+  const [reconnect, setReconnect] = useState<{ slot: number | null; message: string } | null>(null);
   const [selected, setSelected] = useState<Contact | null>(null);
   const [query, setQuery] = useState("");
   const [stageFilter, setStageFilter] = useState("");
@@ -20,7 +21,17 @@ export function CrmDashboard() {
 
   const loadContacts = async () => {
     const response = await fetch("/api/contacts");
-    const data = (await response.json()) as { contacts?: Contact[] };
+    const data = (await response.json()) as {
+      contacts?: Contact[];
+      reconnect?: boolean;
+      slot?: number | null;
+      error?: string;
+    };
+    if (data.reconnect) {
+      setReconnect({ slot: data.slot ?? null, message: data.error ?? "" });
+      return;
+    }
+    setReconnect(null);
     setContacts(data.contacts ?? []);
   };
 
@@ -37,7 +48,19 @@ export function CrmDashboard() {
     setSyncErrors([]);
     try {
       const response = await fetch("/api/sync/manual", { method: "POST" });
-      const data = (await response.json()) as { synced?: number; failed?: number; errors?: string[] };
+      const data = (await response.json()) as {
+        synced?: number;
+        failed?: number;
+        errors?: string[];
+        reconnect?: boolean;
+        slot?: number | null;
+        error?: string;
+      };
+      if (data.reconnect) {
+        setReconnect({ slot: data.slot ?? null, message: data.error ?? "" });
+        setSyncResult(null);
+        return;
+      }
       setSyncResult(`Synced ${data.synced ?? 0} contacts${data.failed ? `, ${data.failed} failed` : ""}.`);
       setSyncErrors(data.errors ?? []);
       await loadContacts();
@@ -99,6 +122,27 @@ export function CrmDashboard() {
           </button>
         </div>
       </div>
+
+      {reconnect && (
+        <div className="flex items-start justify-between gap-4 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          <div>
+            <p className="font-medium">
+              Google account{reconnect.slot ? ` (slot ${reconnect.slot})` : ""} needs reconnecting
+            </p>
+            <p className="mt-1 text-amber-800">
+              Its access token is no longer valid, so contacts and sync can&apos;t reach Gmail/Sheets.
+              Reconnect to fix it. If this keeps happening weekly, publish your Google OAuth consent
+              screen (Testing mode expires tokens after 7 days).
+            </p>
+          </div>
+          <a
+            className="shrink-0 rounded-md bg-amber-600 px-4 py-2 font-medium text-white hover:bg-amber-700"
+            href="/settings"
+          >
+            Reconnect
+          </a>
+        </div>
+      )}
 
       {syncErrors.length > 0 && (
         <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">

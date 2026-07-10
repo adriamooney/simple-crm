@@ -2,6 +2,7 @@ import { differenceInCalendarDays } from "date-fns";
 
 import { summarizeConversation } from "@/lib/claude";
 import { getEnv } from "@/lib/env";
+import { ReconnectRequiredError, withReconnectGuard } from "@/lib/errors";
 import { getContacts, getGmailClient, updateContactRow } from "@/lib/google";
 import { getGoogleAccount } from "@/lib/token-store";
 import type { Contact } from "@/types/crm";
@@ -34,20 +35,25 @@ const fetchMessagesForContact = async (email: string): Promise<MessageHit[]> => 
     if (!refreshToken) continue;
 
     const gmail = getGmailClient(refreshToken);
-    const list = await gmail.users.messages.list({
-      userId: "me",
-      q: `to:${email} OR from:${email}`,
-      maxResults: 20,
-    });
+    const list = await withReconnectGuard(slot, () =>
+      gmail.users.messages.list({
+        userId: "me",
+        q: `to:${email} OR from:${email}`,
+        maxResults: 20,
+      }),
+    );
 
     for (const message of list.data.messages ?? []) {
-      if (!message.id) continue;
-      const detail = await gmail.users.messages.get({
-        userId: "me",
-        id: message.id,
-        format: "metadata",
-        metadataHeaders: ["From"],
-      });
+      const id = message.id;
+      if (!id) continue;
+      const detail = await withReconnectGuard(slot, () =>
+        gmail.users.messages.get({
+          userId: "me",
+          id,
+          format: "metadata",
+          metadataHeaders: ["From"],
+        }),
+      );
 
       const fromHeader =
         detail.data.payload?.headers?.find((h) => h.name?.toLowerCase() === "from")?.value ?? "";
@@ -136,6 +142,9 @@ export const syncCrmFromGmail = async (): Promise<{ synced: number; failed: numb
       await updateContactRow(nextContact);
       synced += 1;
     } catch (err) {
+      // A dead token will fail identically for every contact — surface it once
+      // as a reconnect signal instead of logging the same error per row.
+      if (err instanceof ReconnectRequiredError) throw err;
       failed += 1;
       errors.push(`${contact.email}: ${err instanceof Error ? err.message : String(err)}`);
     }

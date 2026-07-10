@@ -77,7 +77,7 @@ export default async function SettingsPage(props: PageProps<"/settings">) {
         </div>
 
         <p className="mt-4 text-sm text-zinc-600">
-          After connecting both slots, the hourly sync can run without manual refresh tokens.
+          After connecting both slots, the daily sync can run without manual refresh tokens.
         </p>
       </section>
     </main>
